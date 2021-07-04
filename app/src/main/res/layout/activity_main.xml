@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:min="1"
-        android:max="600"
+        android:max="3600"
         android:progress="30"/>
 
 

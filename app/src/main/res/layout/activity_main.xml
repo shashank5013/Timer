@@ -7,14 +7,34 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
+    <SeekBar
+        android:id="@+id/time_selecter_seekbar"
+        android:layout_width="match_parent"
+        android:minHeight="40dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:min="1"
+        android:max="600"
+        android:progress="30"/>
+
+
+    <me.zhanghai.android.materialprogressbar.MaterialProgressBar
+        android:layout_marginBottom="40dp"
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        style="@style/Widget.MaterialProgressBar.ProgressBar"
+        android:minWidth="340dp"
+        android:minHeight="340dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"/>
     <TextView
+        android:layout_marginBottom="40dp"
         android:id="@+id/time_tv"
         android:layout_gravity="center"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="70sp"
-        android:textAppearance="@style/TextAppearance.AppCompat.Large"
-        android:text="00:10:00"/>
+        android:textSize="50sp"
+        android:textAppearance="@style/TextAppearance.AppCompat.Large" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         style="@style/Widget.Design.FloatingActionButton"

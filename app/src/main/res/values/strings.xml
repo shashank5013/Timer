@@ -1,5 +1,4 @@
 <resources>
     <string name="app_name">Timer</string>
-    <string name="initial_time">00:10:00</string>
-    <string name="time_up">TimeUp</string>
+    <string name="time_up">Time Up</string>
 </resources>

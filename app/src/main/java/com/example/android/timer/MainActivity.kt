@@ -1,17 +1,20 @@
 package com.example.android.timer
 
-import android.os.AsyncTask
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.SeekBar
 import androidx.core.content.res.ResourcesCompat
 import com.example.android.timer.databinding.ActivityMainBinding
+import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers.Main
 
+const val initTime=30
 class MainActivity : AppCompatActivity() {
 
-    var timeLeft=0 /** Stores the time left in seconds */
+    private var timeLeft=0 /** Stores the time left in seconds */
 
-    var currentTimer=30 /** Stores the current start time of countdown */
+    private var currentTimer=0 /** Stores the current start time of timer */
 
     lateinit var binding:ActivityMainBinding
 
@@ -23,17 +26,12 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
 
-        var task=TimerTask()
+        var task= CoroutineScope(IO).launch {  }
 
-        var StartOrPause=true
+        var startOrPause=true
 
-        /** initial timer stage */
-        timeLeft=currentTimer
-        binding.timeTv.text=task.convertSec(currentTimer)
-        binding.progressBar.apply {
-            max=currentTimer
-            progress=currentTimer
-        }
+        /** initial timer */
+        setTimer(initTime)
 
 
 
@@ -41,28 +39,18 @@ class MainActivity : AppCompatActivity() {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
 
                 /** if timer is already running stop the timer */
-                if(!task.isCancelled){task.cancel(true)}
-                StartOrPause=true
+                if(!(task.isCancelled)){task.cancel()}
+                startOrPause=true
                 binding.start.setImageDrawable(ResourcesCompat.getDrawable(resources,R.drawable.ic_play,null))
 
 
                 /** updating the current timer and textview */
-                currentTimer=progress
-                timeLeft=currentTimer
-                binding.timeTv.text=task.convertSec(progress)
-                binding.progressBar.apply {
-                    max=currentTimer
-                    this.progress=progress
-                }
+                setTimer(progress)
             }
 
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+            override fun onStartTrackingTouch(seekBar: SeekBar?){}
 
-            }
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-
-            }
+            override fun onStopTrackingTouch(seekBar: SeekBar?){}
 
         })
 
@@ -71,104 +59,89 @@ class MainActivity : AppCompatActivity() {
 
         /** Button to start or stop the timer */
         binding.start.setOnClickListener {
-            if(StartOrPause){
+            if(startOrPause){
                 binding.start.setImageDrawable(ResourcesCompat.getDrawable(resources,R.drawable.ic_pause,null))
-                task=TimerTask()
-                task.execute(timeLeft)
+
+                //Using coroutines for background task
+                task= CoroutineScope(IO).launch{
+                    timeTicker()
+                }
             }
             else{
                 binding.start.setImageDrawable(ResourcesCompat.getDrawable(resources,R.drawable.ic_play,null))
-                if(task.isCancelled==false){task.cancel(true)}
+                if(!task.isCancelled){task.cancel()}
             }
 
-            StartOrPause=!StartOrPause
+            startOrPause=!startOrPause
         }
 
 
         /** Button to reset the timer */
         binding.stop.setOnClickListener {
             binding.start.setImageDrawable(ResourcesCompat.getDrawable(resources,R.drawable.ic_play,null))
-            StartOrPause=true
-            if(task.isCancelled==false){task.cancel(true)}
-            timeLeft=currentTimer
-            binding.timeTv.text=task.convertSec(currentTimer)
-            binding.progressBar.apply {
-                max=currentTimer
-                progress=currentTimer
-            }
+            startOrPause=true
+            if(!task.isCancelled){task.cancel()}
+            setTimer(currentTimer)
         }
 
 
 
     }
 
+    /** Sets the timer and progressbar to time provided */
+    private fun setTimer(time:Int){
+        timeLeft=time
+        currentTimer=time
+        binding.timeTv.text=secToAnalogTime(time)
+        binding.progressBar.apply {
+            max=time
+            progress=time
+        }
+    }
+
+
+
     /**
-     * time passed to be calculated in background thread using AsyncTask
-     * */
-        inner class TimerTask:AsyncTask<Int,Int,Void>(){
-
-        /**
-         * Calculates every second until no time left or timer stopped
-         */
-        override fun doInBackground(vararg params: Int?): Void? {
-            var time=params[0]!!
-            while(time>0 && isCancelled()==false){
-               wait1Sec()
-                time-=1
-                publishProgress(time)
-
-            }
-            return null
+     * Converts given time into analog string
+     */
+    private fun secToAnalogTime(time:Int):String{
+        if(time==0){
+            return getString(R.string.time_up)
         }
+        var timeInString=""
+        var currTime=time
+        val hours=currTime/3600
+        currTime%=3600
+        val minutes=currTime/60
+        currTime%=60
+        val seconds=currTime
 
-        /**
-         * Updates the textView after every second
-         */
-        override fun onProgressUpdate(vararg values: Int?) {
-            binding.progressBar.progress=values[0]!!
-            timeLeft=values[0]!!
-            val timeinString=convertSec(values[0]!!)
-            binding.timeTv.text=timeinString
+        timeInString += if(hours<10){ "0$hours:" } else{ "$hours:" }
+
+        timeInString += if(minutes<10){ "0$minutes:" } else{ "$minutes:" }
+
+        timeInString += if(seconds<10){ "0$seconds" } else{ "$seconds" }
+
+        return timeInString
+    }
+
+    /** decreases the time left after every second */
+    private suspend fun timeTicker(){
+        while(timeLeft>0){
+            delay(1000L)
+            timeLeft--
+            updateTime()
         }
+    }
 
-        /**
-         * Calculates if a second has passed using System.currentTimeMillis()
-         */
-        private fun wait1Sec() {
-            val currTime=System.currentTimeMillis()
-            while(System.currentTimeMillis()<currTime+1000){}
+    /** Updates the timer and progressBar */
+    private suspend fun updateTime(){
+        val time=secToAnalogTime(timeLeft)
+
+        //Going to main thread
+        withContext(Main){
+            binding.timeTv.text=time
+            binding.progressBar.progress=timeLeft
         }
-
-        /**
-         * Converts given time into analog string
-         */
-           public fun convertSec(time:Int):String{
-            var timeInString=""
-            var currTime=time
-            val hours=currTime/3600
-            currTime%=3600
-            val minutes=currTime/60
-            currTime%=60
-            val seconds=currTime
-
-            timeInString += if(hours<10){ "0$hours:" }
-            else{ "$hours:" }
-
-            timeInString += if(minutes<10){ "0$minutes:" }
-            else{ "$minutes:" }
-
-            timeInString += if(seconds<10){ "0$seconds" }
-            else{ "$seconds" }
-
-            return timeInString
-        }
-
-        /**
-         * if time is over displays "Time Up"
-         */
-        override fun onPostExecute(result: Void?) {
-            binding.timeTv.text=getString(R.string.time_up)
-        }
-
     }
 }
